@@ -1,8 +1,9 @@
 import ProductInteraction from "@/components/ProductInteraction";
 import { ProductType } from "@/types";
 import Image from "next/image";
+import type { Metadata } from "next";
 
-// TEMPORARY
+/* --- TEMP STUB PRODUCT --- */
 const product: ProductType = {
   id: 1,
   name: "Adidas CoreFit T-Shirt",
@@ -20,30 +21,36 @@ const product: ProductType = {
   },
 };
 
+/* --- generateMetadata must also await params if Next gives a promise --- */
 export const generateMetadata = async ({
   params,
 }: {
-  params: { id: string };
-}) => {
-  // TODO:get the product from db
-  // TEMPORARY
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> => {
+  const { id } = await params; // await here
+  // TODO: fetch product by id if needed
   return {
     title: product.name,
-    describe: product.description,
+    description: product.description,
   };
 };
 
-interface ProductPageProps {
+/* --- Explicit, simple props type where both are Promises --- */
+type ProductPageProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ color?: string; size?: string }>;
-}
+};
 
-const ProductPage = async ({ params, searchParams }: ProductPageProps) => {
-  const { id } = await params;       // ✅ must await
-  const { size, color } = await searchParams; // ✅ must await
+export default async function ProductPage({
+  params,
+  searchParams,
+}: ProductPageProps) {
+  const { id } = await params; // ✅ await
+  const { size, color } = await searchParams; // ✅ await
 
-  const selectedSize = size || product.sizes[0];
-  const selectedColor = color || product.colors[0];
+  // Fallbacks
+  const selectedSize = size ?? (product.sizes[0] as string);
+  const selectedColor = color ?? (product.colors[0] as string);
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row md:gap-12 mt-12">
@@ -56,16 +63,19 @@ const ProductPage = async ({ params, searchParams }: ProductPageProps) => {
           className="object-contain rounded-md"
         />
       </div>
+
       {/* DETAILS */}
       <div className="w-full lg:w-7/12 flex flex-col gap-4">
         <h1 className="text-2xl font-medium">{product.name}</h1>
         <p className="text-gray-500">{product.description}</p>
         <h2 className="text-2xl font-semibold">${product.price.toFixed(2)}</h2>
+
         <ProductInteraction
           product={product}
           selectedSize={selectedSize}
           selectedColor={selectedColor}
         />
+
         {/* CARD INFO */}
         <div className="flex items-center gap-2 mt-4">
           <Image
@@ -101,6 +111,4 @@ const ProductPage = async ({ params, searchParams }: ProductPageProps) => {
       </div>
     </div>
   );
-};
-
-export default ProductPage;
+}
