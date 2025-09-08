@@ -33,14 +33,14 @@ export const generateMetadata = async ({
   };
 };
 
-const ProductPage = async ({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
+interface ProductPageProps {
+  params: Promise<{ id: string }>;
   searchParams: Promise<{ color?: string; size?: string }>;
-}) => {
-  const { size, color } = await searchParams;
+}
+
+const ProductPage = async ({ params, searchParams }: ProductPageProps) => {
+  const { id } = await params;       // ✅ must await
+  const { size, color } = await searchParams; // ✅ must await
 
   const selectedSize = size || product.sizes[0];
   const selectedColor = color || product.colors[0];
