@@ -1,10 +1,27 @@
-import ProductInteraction from "@/components/ProductInteraction";
-import { ProductType } from "@/types";
 import Image from "next/image";
 import type { Metadata } from "next";
 
-/* --- TEMP STUB PRODUCT --- */
-const product: ProductType = {
+// Keep it dynamic-friendly since we read searchParams
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+/** Types kept local so there’s no external import to break deployment */
+type Color = "gray" | "purple" | "green";
+type Size = "xs" | "s" | "m" | "l" | "xl";
+
+type Product = {
+  id: number;
+  name: string;
+  shortDescription: string;
+  description: string;
+  price: number;
+  sizes: Size[];
+  colors: Color[];
+  images: Record<Color, string>;
+};
+
+/** Stub product (replace with your fetch later if you want) */
+const product: Product = {
   id: 1,
   name: "Adidas CoreFit T-Shirt",
   shortDescription:
@@ -21,42 +38,50 @@ const product: ProductType = {
   },
 };
 
-/* --- Correct generateMetadata --- */
-export async function generateMetadata({
-  params,
-}: {
-  params: { id: string };
-}): Promise<Metadata> {
-  const { id } = params; // no need to await
-  // TODO: fetch product by id if needed
-  return {
-    title: product.name,
-    description: product.description,
-  };
-}
-
-/* --- Page Component --- */
-type ProductPageProps = {
-  params: { id: string };
-  searchParams: { color?: string; size?: string };
+/** Static metadata to avoid edge-cases in generateMetadata */
+export const metadata: Metadata = {
+  title: "Product",
+  description: "Product details page",
 };
 
-export default function ProductPage({ params, searchParams }: ProductPageProps) {
-  const { id } = params;
-  const { size, color } = searchParams;
+type PageProps = {
+  params: { id: string };
+  searchParams?: { color?: string; size?: string };
+};
 
-  // Fallbacks
-  const selectedSize = size ?? product.sizes[0];
-  const selectedColor = color ?? product.colors[0];
+export default function ProductPage({ params, searchParams }: PageProps) {
+  const colorParam = (searchParams?.color ?? "") as Color;
+  const sizeParam = (searchParams?.size ?? "") as Size;
+
+  const selectedColor: Color = product.colors.includes(colorParam)
+    ? colorParam
+    : product.colors[0];
+
+  const selectedSize: Size = product.sizes.includes(sizeParam)
+    ? sizeParam
+    : product.sizes[0];
+
+  // Guaranteed to exist thanks to union typing + includes() check
+  const imageSrc = product.images[selectedColor];
+
+  // Build a relative URL that preserves/updates query params (no client JS needed)
+  const buildUrl = (next: Partial<{ color: Color; size: Size }>) => {
+    // URL requires a base, but we return a relative string
+    const u = new URL(`/products/${params.id}`, "http://localhost");
+    u.searchParams.set("color", next.color ?? selectedColor);
+    u.searchParams.set("size", next.size ?? selectedSize);
+    return `${u.pathname}?${u.searchParams.toString()}`;
+  };
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row md:gap-12 mt-12">
       {/* IMAGE */}
       <div className="w-full lg:w-5/12 relative aspect-[2/3]">
         <Image
-          src={product.images[selectedColor]}
-          alt={product.name}
+          src={imageSrc}
+          alt={`${product.name} - ${selectedColor}`}
           fill
+          priority
           className="object-contain rounded-md"
         />
       </div>
@@ -67,11 +92,40 @@ export default function ProductPage({ params, searchParams }: ProductPageProps) 
         <p className="text-gray-500">{product.description}</p>
         <h2 className="text-2xl font-semibold">${product.price.toFixed(2)}</h2>
 
-        <ProductInteraction
-          product={product}
-          selectedSize={selectedSize}
-          selectedColor={selectedColor}
-        />
+        {/* Size selector (server links) */}
+        <div className="flex flex-wrap items-center gap-2">
+          {product.sizes.map((s) => (
+            <a
+              key={s}
+              href={buildUrl({ size: s })}
+              className={`px-3 py-1 rounded-md border transition ${
+                s === selectedSize
+                  ? "bg-black text-white border-black"
+                  : "bg-white text-black hover:bg-gray-100"
+              }`}
+            >
+              {s.toUpperCase()}
+            </a>
+          ))}
+        </div>
+
+        {/* Color selector (server links) */}
+        <div className="flex items-center gap-2">
+          {product.colors.map((c) => (
+            <a
+              key={c}
+              href={buildUrl({ color: c })}
+              className={`px-3 py-1 rounded-md border transition capitalize ${
+                c === selectedColor
+                  ? "bg-black text-white border-black"
+                  : "bg-white text-black hover:bg-gray-100"
+              }`}
+              aria-label={`Select ${c}`}
+            >
+              {c}
+            </a>
+          ))}
+        </div>
 
         {/* CARD INFO */}
         <div className="flex items-center gap-2 mt-4">
@@ -97,6 +151,7 @@ export default function ProductPage({ params, searchParams }: ProductPageProps) 
             className="rounded-md"
           />
         </div>
+
         <p className="text-gray-500 text-xs">
           By clicking Pay Now, you agree to our{" "}
           <span className="underline hover:text-black">Terms & Conditions</span>{" "}
