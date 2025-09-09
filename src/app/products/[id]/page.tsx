@@ -21,36 +21,33 @@ const product: ProductType = {
   },
 };
 
-/* --- generateMetadata must also await params if Next gives a promise --- */
-export const generateMetadata = async ({
+/* --- Correct generateMetadata --- */
+export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
-}): Promise<Metadata> => {
-  const { id } = await params; // await here
+  params: { id: string };
+}): Promise<Metadata> {
+  const { id } = params; // no need to await
   // TODO: fetch product by id if needed
   return {
     title: product.name,
     description: product.description,
   };
-};
+}
 
-/* --- Explicit, simple props type where both are Promises --- */
+/* --- Page Component --- */
 type ProductPageProps = {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ color?: string; size?: string }>;
+  params: { id: string };
+  searchParams: { color?: string; size?: string };
 };
 
-export default async function ProductPage({
-  params,
-  searchParams,
-}: ProductPageProps) {
-  const { id } = await params; // ✅ await
-  const { size, color } = await searchParams; // ✅ await
+export default function ProductPage({ params, searchParams }: ProductPageProps) {
+  const { id } = params;
+  const { size, color } = searchParams;
 
   // Fallbacks
-  const selectedSize = size ?? (product.sizes[0] as string);
-  const selectedColor = color ?? (product.colors[0] as string);
+  const selectedSize = size ?? product.sizes[0];
+  const selectedColor = color ?? product.colors[0];
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row md:gap-12 mt-12">
